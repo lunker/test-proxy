@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration status="WARN" name="MyApp">
+    <Appenders>
+        <Console name="console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n" />
+        </Console>
+
+
+        <RollingRandomAccessFile name="fileLog" fileName="logs/new-proxy.log" filePattern="logs/backup/new-proxy-%d{yyyy-MM-dd_HH}_%i.log" immediateFlush="true" append="true" ignoreExceptions="false">
+            <PatternLayout>
+                <Pattern>%d %p %c{1.} [%t] %m%n</Pattern>
+            </PatternLayout>
+
+            <Policies>
+                <TimeBasedTriggeringPolicy interval="6" modulate="true"/>
+                <SizeBasedTriggeringPolicy size="50 MB"/>
+            </Policies>
+            <DefaultRolloverStrategy max="500"/>
+        </RollingRandomAccessFile>
+
+
+        <Async name="ASYNC_console" includeLocation="true">
+            <AppenderRef ref="console" />
+        </Async>
+
+        <Async name="ASYNC_file" includeLocation="true">
+            <AppenderRef ref="fileLog" />
+        </Async>
+
+
+    </Appenders>
+
+    <Loggers>
+        <Root level="info">
+            <AppenderRef ref="ASYNC_file"/>
+        </Root>
+    </Loggers>
+</Configuration>
