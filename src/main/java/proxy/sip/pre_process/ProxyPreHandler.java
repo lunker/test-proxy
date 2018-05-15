@@ -1,6 +1,6 @@
 package proxy.sip.pre_process;
 
-import org.lunker.new_proxy.sip.wrapper.message.proxy.ProxySipMessage;
+import org.lunker.new_proxy.sip.wrapper.message.DefaultSipMessage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,12 +10,16 @@ import org.slf4j.LoggerFactory;
 public class ProxyPreHandler {
     private Logger logger= LoggerFactory.getLogger(ProxyPreHandler.class);
 
+    public DefaultSipMessage handle(DefaultSipMessage defaultSipMessage){
+        if(logger.isDebugEnabled())
+            logger.debug("In ProxyPreHandler");
 
-    public ProxySipMessage handle(ProxySipMessage proxySipMessage){
+
+
         requestValidate();
         checkUri();
 
-        return null;
+        return defaultSipMessage;
     }
 
     public void requestValidate(){

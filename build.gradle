@@ -21,9 +21,7 @@ apply plugin: 'org.hidetake.ssh'
 remotes {
     webServer {
         host = '118.221.122.12'
-        user = 'loco'
-//        identity = file('/Users/voiceloco/.ssh/id_rsa')
-        password = 'voice1@#4'
+
     }
 }
 

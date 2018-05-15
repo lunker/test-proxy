@@ -1,24 +1,19 @@
-package proxy.core;
+package proxy.sip.process;
 
 import com.google.gson.Gson;
 import gov.nist.javax.sip.message.SIPRequest;
 import gov.nist.javax.sip.message.SIPResponse;
 import io.netty.channel.ChannelHandlerContext;
-import org.lunker.new_proxy.core.ProxyContext;
 import org.lunker.new_proxy.sip.wrapper.message.DefaultSipMessage;
 import org.lunker.new_proxy.sip.wrapper.message.proxy.ProxySipRequest;
 import org.lunker.new_proxy.sip.wrapper.message.proxy.ProxySipResponse;
 import org.lunker.new_proxy.stub.AbstractSIPHandler;
-import org.lunker.new_proxy.stub.SipMessageHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import proxy.registrar.Registrar;
 import proxy.registrar.Registration;
-import proxy.sip.pre_process.ProxyPreHandler;
 import proxy.util.AuthUtil;
 import proxy.util.JedisConnection;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import javax.sip.address.AddressFactory;
 import javax.sip.address.URI;
@@ -27,13 +22,12 @@ import javax.sip.header.HeaderFactory;
 import javax.sip.header.WWWAuthenticateHeader;
 import javax.sip.message.MessageFactory;
 import java.net.InetSocketAddress;
-import java.util.Optional;
 
 /**
- * Created by dongqlee on 2018. 4. 25..
+ * Created by dongqlee on 2018. 5. 15..
  */
-public class SipServletImpl implements AbstractSIPHandler, SipMessageHandler {
-    private Logger logger= LoggerFactory.getLogger(SipServletImpl.class);
+public class ProxyInHandler implements AbstractSIPHandler {
+    private Logger logger= LoggerFactory.getLogger(ProxyInHandler.class);
 
     private javax.sip.SipFactory sipFactory=null;
     private AddressFactory addressFactory=null;
@@ -42,14 +36,10 @@ public class SipServletImpl implements AbstractSIPHandler, SipMessageHandler {
     private Registrar registrar=null;
     private JedisConnection jedisConnection=null;
     private Gson gson=null;
-    private ProxyContext proxyContext=null;
 
-    private ProxyPreHandler proxyPreHandler=null;
-
-    public SipServletImpl() {
+    public ProxyInHandler() {
         jedisConnection=JedisConnection.getInstance();
         gson=new Gson();
-        proxyContext= ProxyContext.getInstance();
 
         try{
             this.sipFactory=javax.sip.SipFactory.getInstance();
@@ -61,50 +51,28 @@ public class SipServletImpl implements AbstractSIPHandler, SipMessageHandler {
         catch (Exception e){
             e.printStackTrace();
         }
-
-        proxyPreHandler=new ProxyPreHandler();
     }
 
-    @Override
-    public void handle(ChannelHandlerContext ctx, Optional<DefaultSipMessage> maybeDefaultSipMessage) {
-        Mono<Integer> wrapper=Mono.fromCallable(()->{
+    public DefaultSipMessage handle(ChannelHandlerContext ctx, DefaultSipMessage defaultSipMessage){
+        DefaultSipMessage targetMessage=null;
 
-            maybeDefaultSipMessage.map((DefaultSipMessage)->{
-                logger.info("[RECEIVED]:\n" + maybeDefaultSipMessage.get().toString());
+        if(defaultSipMessage instanceof ProxySipRequest){
+            String method=defaultSipMessage.getMethod();
+            if(method.equals(SIPRequest.REGISTER))
+                targetMessage=this.handleRegister(ctx, defaultSipMessage);
+            else if (method.equals(SIPRequest.INVITE))
+                targetMessage=this.handleInvite(defaultSipMessage);
+            else if(method.equals(SIPRequest.ACK))
+                targetMessage=this.handleAck(defaultSipMessage);
+            else if(method.equals(SIPRequest.BYE))
+                targetMessage=this.handleBye(defaultSipMessage);
+        }
+        else if(defaultSipMessage instanceof ProxySipResponse){
+            targetMessage=handleResponse(defaultSipMessage);
+        }
 
-                DefaultSipMessage targetMessage=null;
-
-                if(DefaultSipMessage instanceof ProxySipRequest){
-                    String method=DefaultSipMessage.getMethod();
-                    if(method.equals(SIPRequest.REGISTER))
-                        targetMessage=this.handleRegister(ctx, DefaultSipMessage);
-                    else if (method.equals(SIPRequest.INVITE))
-                        targetMessage=this.handleInvite(DefaultSipMessage);
-                    else if(method.equals(SIPRequest.ACK))
-                        targetMessage=this.handleAck(DefaultSipMessage);
-                    else if(method.equals(SIPRequest.BYE))
-                        targetMessage=this.handleBye(DefaultSipMessage);
-                }
-                else if(DefaultSipMessage instanceof ProxySipResponse){
-                    targetMessage=handleResponse(DefaultSipMessage);
-                }
-
-                return targetMessage;
-            }).ifPresent((targetMessage)->{
-                try{
-                    targetMessage.send();
-                }
-                catch (Exception e){
-                    e.printStackTrace();
-                }
-            });
-            return 0;
-        });
-
-        wrapper=wrapper.subscribeOn(Schedulers.immediate());
-        wrapper.subscribe();
+        return targetMessage;
     }
-
 
     public DefaultSipMessage handleResponse(DefaultSipMessage response){
         response=(ProxySipResponse) response;
@@ -216,9 +184,7 @@ public class SipServletImpl implements AbstractSIPHandler, SipMessageHandler {
                 Registration registration=new Registration(userKey, aor,account, domain, remoteAddress, remotePort);
 
                 registrar.register(userKey, registration, ctx);
-
 //                jedisConnection.set(userKey, gson.toJson(registration));
-
             }
             else{
                 logger.warn("REGISTER Fail");
@@ -372,4 +338,5 @@ public class SipServletImpl implements AbstractSIPHandler, SipMessageHandler {
     public DefaultSipMessage handleRegister(DefaultSipMessage registerRequest) {
         return null;
     }
+
 }
