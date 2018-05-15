@@ -17,6 +17,8 @@ import proxy.registrar.Registration;
 import proxy.sip.pre_process.ProxyPreHandler;
 import proxy.util.AuthUtil;
 import proxy.util.JedisConnection;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import javax.sip.address.AddressFactory;
 import javax.sip.address.URI;
@@ -65,51 +67,42 @@ public class SipServletImpl implements AbstractSIPHandler, SipMessageHandler {
 
     @Override
     public void handle(ChannelHandlerContext ctx, Optional<DefaultSipMessage> maybeDefaultSipMessage) {
-
-
-
-
-        maybeDefaultSipMessage.map((DefaultSipMessage)->{
-            logger.info("[RECEIVED]:\n" + maybeDefaultSipMessage.get().toString());
-
-            DefaultSipMessage targetMessage=null;
-
-            if(DefaultSipMessage instanceof ProxySipRequest){
-                String method=DefaultSipMessage.getMethod();
-                if(method.equals(SIPRequest.REGISTER))
-                    targetMessage=this.handleRegister(ctx, DefaultSipMessage);
-                else if (method.equals(SIPRequest.INVITE))
-                    targetMessage=this.handleInvite(DefaultSipMessage);
-                else if(method.equals(SIPRequest.ACK))
-                    targetMessage=this.handleAck(DefaultSipMessage);
-                else if(method.equals(SIPRequest.BYE))
-                    targetMessage=this.handleBye(DefaultSipMessage);
-            }
-            else if(DefaultSipMessage instanceof ProxySipResponse){
-                targetMessage=handleResponse(DefaultSipMessage);
-            }
-
-            return targetMessage;
-        }).ifPresent((targetMessage)->{
-            try{
-                targetMessage.send();
-            }
-            catch (Exception e){
-                e.printStackTrace();
-            }
-        });
-
-        /*
         Mono<Integer> wrapper=Mono.fromCallable(()->{
 
+            maybeDefaultSipMessage.map((DefaultSipMessage)->{
+                logger.info("[RECEIVED]:\n" + maybeDefaultSipMessage.get().toString());
 
+                DefaultSipMessage targetMessage=null;
 
+                if(DefaultSipMessage instanceof ProxySipRequest){
+                    String method=DefaultSipMessage.getMethod();
+                    if(method.equals(SIPRequest.REGISTER))
+                        targetMessage=this.handleRegister(ctx, DefaultSipMessage);
+                    else if (method.equals(SIPRequest.INVITE))
+                        targetMessage=this.handleInvite(DefaultSipMessage);
+                    else if(method.equals(SIPRequest.ACK))
+                        targetMessage=this.handleAck(DefaultSipMessage);
+                    else if(method.equals(SIPRequest.BYE))
+                        targetMessage=this.handleBye(DefaultSipMessage);
+                }
+                else if(DefaultSipMessage instanceof ProxySipResponse){
+                    targetMessage=handleResponse(DefaultSipMessage);
+                }
+
+                return targetMessage;
+            }).ifPresent((targetMessage)->{
+                try{
+                    targetMessage.send();
+                }
+                catch (Exception e){
+                    e.printStackTrace();
+                }
+            });
             return 0;
         });
 
         wrapper=wrapper.subscribeOn(Schedulers.immediate());
         wrapper.subscribe();
-        */
     }
 
 
@@ -141,7 +134,6 @@ public class SipServletImpl implements AbstractSIPHandler, SipMessageHandler {
         }
         else {
             logger.warn("Not implemented call logic . . .");
-//            this.targetCtx.fireChannelRead(response.toString());
         }
 
         return response;

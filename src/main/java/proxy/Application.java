@@ -11,7 +11,7 @@ public class Application {
 
     public static void main(String[] args){
         try{
-            Bootstrap.start("tcp", new SipServletImpl());
+            Bootstrap.start("tcp", SipServletImpl.class);
         }
         catch (Exception e ){
             e.printStackTrace();

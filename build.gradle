@@ -3,6 +3,31 @@ version '1.0-SNAPSHOT'
 
 apply plugin: 'java'
 
+
+
+buildscript {
+    repositories {
+        jcenter()
+    }
+    dependencies {
+        classpath 'org.hidetake:gradle-ssh-plugin:2.9.0'
+    }
+}
+
+apply plugin: 'org.hidetake.ssh'
+
+
+
+remotes {
+    webServer {
+        host = '118.221.122.12'
+        user = 'loco'
+//        identity = file('/Users/voiceloco/.ssh/id_rsa')
+        password = 'voice1@#4'
+    }
+}
+
+
 sourceCompatibility = 1.8
 
 repositories {
@@ -73,6 +98,16 @@ jar {
     from {
         configurations.compile.collect {it.isDirectory()? it: zipTree(it)}
     }
+}
 
 
+task deploy {
+    doLast {
+        ssh.run {
+            session(remotes.webServer) {
+                put from: 'build/libs/test-proxy-1.0-SNAPSHOT.jar', into: '.'
+//                execute 'sudo service tomcat restart'
+            }
+        }
+    }
 }
