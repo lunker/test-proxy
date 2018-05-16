@@ -32,7 +32,8 @@
 
     <Loggers>
         <Root level="info">
-            <AppenderRef ref="ASYNC_file"/>
+            <!--<AppenderRef ref="ASYNC_file"/>-->
+            <AppenderRef ref="ASYNC_console"/>
         </Root>
     </Loggers>
 </Configuration>

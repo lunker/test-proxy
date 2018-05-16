@@ -14,8 +14,6 @@ public class ProxyPreHandler {
         if(logger.isDebugEnabled())
             logger.debug("In ProxyPreHandler");
 
-
-
         requestValidate();
         checkUri();
 

@@ -90,15 +90,14 @@ public class ProxyInHandler implements AbstractSIPHandler {
             // forwarding 200 ok
         }
         else if(method.equals("INVITE") && statusCode==SIPResponse.RINGING){
-//            response=null;
+
         }
         else if(method.equals("BYE") && statusCode==SIPResponse.OK){
             String targetAor="";
-            ChannelHandlerContext targetCtx=null;
+            Registration registration=null;
 
             targetAor=response.getFrom().getAddress().getURI().toString().split(":")[1];
-
-            targetCtx=registrar.getCtx(targetAor);
+            registration=registrar.getRegistration(targetAor);
         }
         else {
             logger.warn("Not implemented call logic . . .");
@@ -183,7 +182,9 @@ public class ProxyInHandler implements AbstractSIPHandler {
                 remotePort=((InetSocketAddress)ctx.channel().remoteAddress()).getPort();
                 Registration registration=new Registration(userKey, aor,account, domain, remoteAddress, remotePort);
 
-                registrar.register(userKey, registration, ctx);
+                registrar.register(userKey, registration);
+
+//                registrar.register(userKey, registration, ctx);
 //                jedisConnection.set(userKey, gson.toJson(registration));
             }
             else{
@@ -253,17 +254,13 @@ public class ProxyInHandler implements AbstractSIPHandler {
         */
 
         String userKey=inviteRequest.getTo().getAddress().getURI().toString().split(":")[1];
-        ChannelHandlerContext targetCtx=this.registrar.getCtx(userKey);
-        String remoteHost="";
-        int remotePort=0;
+        Registration registration=null;
 
-
-        remoteHost=((InetSocketAddress)targetCtx.channel().remoteAddress()).getHostString();
-        remotePort=((InetSocketAddress)targetCtx.channel().remoteAddress()).getPort();
-
+        registration=this.registrar.getRegistration(userKey);
         String displayName=inviteRequest.getTo().getAddress().getDisplayName();
+
         try{
-            URI requestURI=this.addressFactory.createURI("sip:" + displayName + "@" + remoteHost + ":" + remotePort);
+            URI requestURI=this.addressFactory.createURI("sip:" + displayName + "@" + registration.getRemoteAddress() + ":" + registration.getRemotePort());
             proxyInviteRequest.setRequestURI(requestURI);
         }
         catch (Exception e){
@@ -285,18 +282,13 @@ public class ProxyInHandler implements AbstractSIPHandler {
 
         // send ack to callee
         String aor=ackRequest.getTo().getAddress().getURI().toString().split(":")[1];
-        ChannelHandlerContext targetCtx=this.registrar.getCtx(aor);
+        Registration registration=null;
 
-        String remoteHost="";
-        int remotePort=0;
-
-
-        remoteHost=((InetSocketAddress)targetCtx.channel().remoteAddress()).getHostString();
-        remotePort=((InetSocketAddress)targetCtx.channel().remoteAddress()).getPort();
+        registration=this.registrar.getRegistration(aor);
 
         String displayName=ackRequest.getTo().getAddress().getDisplayName();
         try{
-            URI requestURI=this.addressFactory.createURI("sip:" + displayName + "@" + remoteHost + ":" + remotePort);
+            URI requestURI=this.addressFactory.createURI("sip:" + displayName + "@" + registration.getRemoteAddress() + ":" + registration.getRemotePort());
             ((ProxySipRequest)ackRequest).setRequestURI(requestURI);
         }
         catch (Exception e){
@@ -312,18 +304,13 @@ public class ProxyInHandler implements AbstractSIPHandler {
         logger.info("handleBye");
 
         String aor=byeRequest.getTo().getAddress().getURI().toString().split(":")[1];
-        ChannelHandlerContext targetCtx=this.registrar.getCtx(aor);
+        Registration registration=null;
 
-        String remoteHost="";
-        int remotePort=0;
-
-
-        remoteHost=((InetSocketAddress)targetCtx.channel().remoteAddress()).getHostString();
-        remotePort=((InetSocketAddress)targetCtx.channel().remoteAddress()).getPort();
+        registration=this.registrar.getRegistration(aor);
 
         String displayName=byeRequest.getTo().getAddress().getDisplayName();
         try{
-            URI requestURI=this.addressFactory.createURI("sip:" + displayName + "@" + remoteHost + ":" + remotePort);
+            URI requestURI=this.addressFactory.createURI("sip:" + displayName + "@" + registration.getRemoteAddress() + ":" + registration.getRemotePort());
             ((ProxySipRequest)byeRequest).setRequestURI(requestURI);
         }
         catch (Exception e){

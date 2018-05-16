@@ -46,7 +46,7 @@ public class ProxyUtil {
 //        userAgent= SIPHeaderParser.getUserAent(sipMessage);
         userKey=targetAor;
 
-        targetCtx=registrar.getCtx(userKey);
+//        targetCtx=registrar.getCtx(userKey);
 
         return targetCtx;
     }

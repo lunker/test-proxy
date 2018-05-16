@@ -1,9 +1,7 @@
 package proxy.registrar;
 
-import io.netty.channel.ChannelHandlerContext;
-
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Created by dongqlee on 2018. 3. 16..
@@ -12,48 +10,45 @@ import java.util.Map;
  *
  */
 public class Registrar {
-
-    public static Registrar instance=null;
-
-    private int REGISTRAR_CAPACITY=1000;
+    private int REGISTRAR_CAPACITY=50000;
     // key: aor
     // value: Registration info
     private Map<String, Registration> registrationMap;
-    private Map<String, ChannelHandlerContext> ctxMap;
+
+//    private Map<String, ChannelHandlerContext> ctxMap;
 
     private Registrar() {
-        registrationMap=new HashMap<>(REGISTRAR_CAPACITY);
-        ctxMap=new HashMap<>(REGISTRAR_CAPACITY);
+        registrationMap=new ConcurrentHashMap<>(REGISTRAR_CAPACITY);
+//        ctxMap=new HashMap<>(REGISTRAR_CAPACITY);
     }
 
     public static Registrar getInstance(){
-        if (instance==null)
-            instance=new Registrar();
-        return instance;
+        return SingletonHolder.INSTANCE;
     }
 
     /**
      *
      * @param userKey AOR
      * @param registration
-     * @param ctx
      */
-    public void register(String userKey, Registration registration, ChannelHandlerContext ctx){
-        synchronized (registrationMap){
-            registrationMap.put(userKey, registration);
-            ctxMap.put(userKey, ctx);
-        }
+    public void register(String userKey, Registration registration){
+        registrationMap.put(userKey, registration);
     }
 
     public Registration getRegistration(String userKey){
         return registrationMap.get(userKey);
     }
 
+    /*
     public ChannelHandlerContext getCtx(String userKey){
         synchronized (this.ctxMap){
             return ctxMap.get(userKey);
         }
     }
+    */
 
 
+    private static class SingletonHolder{
+        private static Registrar INSTANCE=new Registrar();
+    }
 }

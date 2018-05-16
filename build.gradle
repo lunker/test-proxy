@@ -3,8 +3,6 @@ version '1.0-SNAPSHOT'
 
 apply plugin: 'java'
 
-
-
 buildscript {
     repositories {
         jcenter()
@@ -17,14 +15,15 @@ buildscript {
 apply plugin: 'org.hidetake.ssh'
 
 
+print('host:: ' + project.getProperty('host'))
 
 remotes {
     webServer {
-        host = '118.221.122.12'
-
+        host = project.getProperty('host')
+        user = project.getProperty('user')
+        password = project.getProperty('password')
     }
 }
-
 
 sourceCompatibility = 1.8
 
@@ -104,7 +103,6 @@ task deploy {
         ssh.run {
             session(remotes.webServer) {
                 put from: 'build/libs/test-proxy-1.0-SNAPSHOT.jar', into: '.'
-//                execute 'sudo service tomcat restart'
             }
         }
     }

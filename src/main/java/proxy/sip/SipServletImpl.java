@@ -19,15 +19,11 @@ import java.util.Optional;
 public class SipServletImpl implements SipMessageHandler {
     private Logger logger= LoggerFactory.getLogger(SipServletImpl.class);
 
-
-
     private ProxyPreHandler proxyPreHandler=null;
     private ProxyInHandler proxyInHandler=null;
     private ProxyProHandler proxyProHandler=null;
 
     public SipServletImpl() {
-
-
         proxyPreHandler=new ProxyPreHandler();
         proxyInHandler=new ProxyInHandler();
         proxyProHandler=new ProxyProHandler();
