@@ -1,6 +1,7 @@
 package proxy.sip.process;
 
 import com.google.gson.Gson;
+import gov.nist.javax.sip.header.Via;
 import gov.nist.javax.sip.message.SIPRequest;
 import gov.nist.javax.sip.message.SIPResponse;
 import io.netty.channel.ChannelHandlerContext;
@@ -21,7 +22,9 @@ import javax.sip.header.Header;
 import javax.sip.header.HeaderFactory;
 import javax.sip.header.WWWAuthenticateHeader;
 import javax.sip.message.MessageFactory;
-import java.net.InetSocketAddress;
+import java.net.*;
+import java.util.Enumeration;
+import java.util.List;
 
 /**
  * Created by dongqlee on 2018. 5. 15..
@@ -37,6 +40,10 @@ public class ProxyInHandler implements AbstractSIPHandler {
     private JedisConnection jedisConnection=null;
     private Gson gson=null;
 
+    private String host="";
+    private int port=10010;
+
+
     public ProxyInHandler() {
         jedisConnection=JedisConnection.getInstance();
         gson=new Gson();
@@ -51,7 +58,48 @@ public class ProxyInHandler implements AbstractSIPHandler {
         catch (Exception e){
             e.printStackTrace();
         }
+
+        host=getHostAddress();
     }
+
+
+    public static String getHostAddress() {
+        InetAddress localAddress = getLocalAddress();
+        if (localAddress == null) {
+            try {
+                return Inet4Address.getLocalHost().getHostAddress();
+            } catch (UnknownHostException e) {
+                ;
+            }
+        } else {
+            return localAddress.getHostAddress();
+        }
+
+
+        return "";
+    }
+
+
+    private static InetAddress getLocalAddress() {
+        try {
+            Enumeration<NetworkInterface> networkInterfaces = NetworkInterface.getNetworkInterfaces();
+            while (networkInterfaces.hasMoreElements()) {
+                List<InterfaceAddress> interfaceAddresses = networkInterfaces.nextElement().getInterfaceAddresses();
+                for (InterfaceAddress interfaceAddress : interfaceAddresses) {
+                    InetAddress address =interfaceAddress.getAddress();
+                    if (address.isSiteLocalAddress()) {
+                        return address;
+                    }
+                }
+            }
+        } catch (Exception e) {
+            ;
+        }
+
+
+        return null;
+    }
+
 
     public DefaultSipMessage handle(ChannelHandlerContext ctx, DefaultSipMessage defaultSipMessage){
         DefaultSipMessage targetMessage=null;
@@ -262,6 +310,16 @@ public class ProxyInHandler implements AbstractSIPHandler {
         try{
             URI requestURI=this.addressFactory.createURI("sip:" + displayName + "@" + registration.getRemoteAddress() + ":" + registration.getRemotePort());
             proxyInviteRequest.setRequestURI(requestURI);
+
+            // add via header
+            Via proxyVia=new Via();
+            proxyVia.setPort(10010);
+            proxyVia.setHost(host);
+            proxyVia.setReceived(host);
+
+            proxyVia.setTransport("tcp");
+
+            proxyInviteRequest.addVia(proxyVia);
         }
         catch (Exception e){
             e.printStackTrace();

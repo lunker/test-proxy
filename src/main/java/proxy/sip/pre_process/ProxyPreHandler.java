@@ -24,7 +24,6 @@ public class ProxyPreHandler {
 
     }
 
-
     private boolean checkUri(){
         return false;
     }

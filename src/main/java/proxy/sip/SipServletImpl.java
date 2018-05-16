@@ -31,7 +31,6 @@ public class SipServletImpl implements SipMessageHandler {
 
     @Override
     public void handle(ChannelHandlerContext ctx, Optional<DefaultSipMessage> maybeDefaultSipMessage) {
-
         if(logger.isInfoEnabled())
             logger.info("[RECEIVED]:\n" + maybeDefaultSipMessage.get().toString());
 
@@ -42,6 +41,4 @@ public class SipServletImpl implements SipMessageHandler {
             proxyAsync.subscribe();
         });
     }
-
-
 }
