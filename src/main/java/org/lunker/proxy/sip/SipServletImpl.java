@@ -1,13 +1,15 @@
-package proxy.sip;
+package org.lunker.proxy.sip;
 
 import io.netty.channel.ChannelHandlerContext;
 import org.lunker.new_proxy.sip.wrapper.message.DefaultSipMessage;
 import org.lunker.new_proxy.stub.SipMessageHandler;
+import org.lunker.proxy.Validation;
+import org.lunker.proxy.core.Message;
+import org.lunker.proxy.sip.pre_process.ProxyPreHandler;
+import org.lunker.proxy.sip.pro_process.ProxyPostHandler;
+import org.lunker.proxy.sip.process.ProxyInHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import proxy.sip.pre_process.ProxyPreHandler;
-import proxy.sip.pro_process.ProxyProHandler;
-import proxy.sip.process.ProxyInHandler;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -21,12 +23,12 @@ public class SipServletImpl implements SipMessageHandler {
 
     private ProxyPreHandler proxyPreHandler=null;
     private ProxyInHandler proxyInHandler=null;
-    private ProxyProHandler proxyProHandler=null;
+    private ProxyPostHandler proxyProHandler=null;
 
     public SipServletImpl() {
         proxyPreHandler=new ProxyPreHandler();
         proxyInHandler=new ProxyInHandler();
-        proxyProHandler=new ProxyProHandler();
+        proxyProHandler=new ProxyPostHandler();
     }
 
     @Override
@@ -35,7 +37,12 @@ public class SipServletImpl implements SipMessageHandler {
             logger.info("[RECEIVED]:\n" + maybeDefaultSipMessage.get().toString());
 
         maybeDefaultSipMessage.ifPresent((defaultSipMessage)->{
-            Mono<?> proxyAsync=Mono.just(defaultSipMessage).map(proxyPreHandler::handle).map((preProcessedSipMessage)-> proxyInHandler.handle(ctx, preProcessedSipMessage)).map(proxyProHandler::handle);
+            Message message=new Message(defaultSipMessage, new Validation());
+
+            Mono<?> proxyAsync=Mono.just(message)
+                    .map(proxyPreHandler::handle)
+                    .map(proxyInHandler::handle)
+                    .map(proxyProHandler::handle);
 
             proxyAsync=proxyAsync.subscribeOn(Schedulers.immediate());
             proxyAsync.subscribe();

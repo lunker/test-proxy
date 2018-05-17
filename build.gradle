@@ -87,7 +87,7 @@ dependencies {
 
 jar {
     manifest {
-        attributes  'Title': 'TestProxy', 'Version': 1.0, 'Main-Class': 'proxy.Application'
+        attributes  'Title': 'TestProxy', 'Version': 1.0, 'Main-Class': 'org.lunker.proxy.Application'
     }
 
     baseName 'test-proxy'

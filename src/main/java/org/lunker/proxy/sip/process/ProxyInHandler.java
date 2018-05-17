@@ -1,20 +1,23 @@
-package proxy.sip.process;
+package org.lunker.proxy.sip.process;
 
 import com.google.gson.Gson;
 import gov.nist.javax.sip.header.Via;
+import gov.nist.javax.sip.header.ViaList;
 import gov.nist.javax.sip.message.SIPRequest;
 import gov.nist.javax.sip.message.SIPResponse;
-import io.netty.channel.ChannelHandlerContext;
 import org.lunker.new_proxy.sip.wrapper.message.DefaultSipMessage;
 import org.lunker.new_proxy.sip.wrapper.message.proxy.ProxySipRequest;
 import org.lunker.new_proxy.sip.wrapper.message.proxy.ProxySipResponse;
 import org.lunker.new_proxy.stub.AbstractSIPHandler;
+import org.lunker.proxy.core.Message;
+import org.lunker.proxy.core.ProcessState;
+import org.lunker.proxy.core.ProxyHandler;
+import org.lunker.proxy.registrar.Registrar;
+import org.lunker.proxy.registrar.Registration;
+import org.lunker.proxy.util.AuthUtil;
+import org.lunker.proxy.util.JedisConnection;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import proxy.registrar.Registrar;
-import proxy.registrar.Registration;
-import proxy.util.AuthUtil;
-import proxy.util.JedisConnection;
 
 import javax.sip.address.AddressFactory;
 import javax.sip.address.URI;
@@ -29,7 +32,7 @@ import java.util.List;
 /**
  * Created by dongqlee on 2018. 5. 15..
  */
-public class ProxyInHandler implements AbstractSIPHandler {
+public class ProxyInHandler implements AbstractSIPHandler, ProxyHandler {
     private Logger logger= LoggerFactory.getLogger(ProxyInHandler.class);
 
     private javax.sip.SipFactory sipFactory=null;
@@ -42,7 +45,6 @@ public class ProxyInHandler implements AbstractSIPHandler {
 
     private String host="";
     private int port=10010;
-
 
     public ProxyInHandler() {
         jedisConnection=JedisConnection.getInstance();
@@ -62,6 +64,36 @@ public class ProxyInHandler implements AbstractSIPHandler {
         host=getHostAddress();
     }
 
+    @Override
+    public Message handle(Message message) {
+        if(message.getProcessState() != ProcessState.IN)
+            return message;
+
+        DefaultSipMessage originalMessage=message.getOriginalMessage();
+        DefaultSipMessage newMessage=null;
+
+
+        // message
+        if(originalMessage instanceof ProxySipRequest){
+            String method=originalMessage.getMethod();
+            if(method.equals(SIPRequest.REGISTER))
+                newMessage=this.handleRegister(originalMessage);
+            else if (method.equals(SIPRequest.INVITE))
+                newMessage=this.handleInvite(originalMessage);
+            else if(method.equals(SIPRequest.ACK))
+                newMessage=this.handleAck(originalMessage);
+            else if(method.equals(SIPRequest.BYE))
+                newMessage=this.handleBye(originalMessage);
+        }
+        else if(originalMessage instanceof ProxySipResponse){
+            newMessage=handleResponse(originalMessage);
+        }
+
+        message.setNewMessage(newMessage);
+        message.setProcessState(ProcessState.POST);
+
+        return message;
+    }
 
     public static String getHostAddress() {
         InetAddress localAddress = getLocalAddress();
@@ -75,10 +107,8 @@ public class ProxyInHandler implements AbstractSIPHandler {
             return localAddress.getHostAddress();
         }
 
-
         return "";
     }
-
 
     private static InetAddress getLocalAddress() {
         try {
@@ -96,153 +126,28 @@ public class ProxyInHandler implements AbstractSIPHandler {
             ;
         }
 
-
         return null;
     }
 
-
-    public DefaultSipMessage handle(ChannelHandlerContext ctx, DefaultSipMessage defaultSipMessage){
-        DefaultSipMessage targetMessage=null;
-
-        if(defaultSipMessage instanceof ProxySipRequest){
-            String method=defaultSipMessage.getMethod();
-            if(method.equals(SIPRequest.REGISTER))
-                targetMessage=this.handleRegister(ctx, defaultSipMessage);
-            else if (method.equals(SIPRequest.INVITE))
-                targetMessage=this.handleInvite(defaultSipMessage);
-            else if(method.equals(SIPRequest.ACK))
-                targetMessage=this.handleAck(defaultSipMessage);
-            else if(method.equals(SIPRequest.BYE))
-                targetMessage=this.handleBye(defaultSipMessage);
-        }
-        else if(defaultSipMessage instanceof ProxySipResponse){
-            targetMessage=handleResponse(defaultSipMessage);
-        }
-
-        return targetMessage;
-    }
-
+    /**
+     * Remove top Via
+     * @param response
+     * @return
+     */
     public DefaultSipMessage handleResponse(DefaultSipMessage response){
-        response=(ProxySipResponse) response;
+        ProxySipResponse proxySipResponse=(ProxySipResponse) response;
+        Via via=proxySipResponse.getTopmostVia();
 
-        int statusCode=((ProxySipResponse) response).getStatusCode();
+        if(via.getHost().equalsIgnoreCase(host)){
+            System.out.println("breakpoint");
 
-        String method=response.getMethod();
-
-        if(method.equals("INVITE") && statusCode== SIPResponse.OK){
-//            ProxySipRequest invite=(ProxySipRequest) response.getSipSession().getAttribute("invite");
-//            System.out.println("asdf");
-
-//            ProxySipResponse generalSipResponse=invite.createResponse(statusCode);
-
-            // forwarding 200 ok
+            proxySipResponse.removeTopVia();
         }
-        else if(method.equals("INVITE") && statusCode==SIPResponse.RINGING){
-
-        }
-        else if(method.equals("BYE") && statusCode==SIPResponse.OK){
-            String targetAor="";
-            Registration registration=null;
-
-            targetAor=response.getFrom().getAddress().getURI().toString().split(":")[1];
-            registration=registrar.getRegistration(targetAor);
-        }
-        else {
-            logger.warn("Not implemented call logic . . .");
+        else{
+            logger.warn("Invalid routed sip message. {}\ndrop...", response);
         }
 
         return response;
-    }
-
-    public DefaultSipMessage handleRegister(ChannelHandlerContext ctx, DefaultSipMessage registerRequest) {
-//        Optional<Header> authorization = Optional.ofNullable(registerRequest.getHeader("Authorization"));
-        registerRequest=(ProxySipRequest) registerRequest;
-        Header authHeader= registerRequest.getHeader("Authorization");
-        String authorization="";
-        ProxySipResponse sipResponse=null;
-
-        if(authHeader==null){
-            // non-auth
-            sipResponse=((ProxySipRequest) registerRequest).createResponse(SIPResponse.UNAUTHORIZED);
-            String domain=registerRequest.getFrom().getAddress().getURI().toString().split("@")[1];
-
-            try{
-                WWWAuthenticateHeader wwwAuthenticateHeader=this.headerFactory.createWWWAuthenticateHeader("Digest");
-                wwwAuthenticateHeader.setAlgorithm("MD5");
-                wwwAuthenticateHeader.setQop("auth");
-                wwwAuthenticateHeader.setNonce(AuthUtil.getNonce());
-                wwwAuthenticateHeader.setRealm(domain);
-
-                sipResponse.addHeader(wwwAuthenticateHeader);
-            }
-            catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-        else{
-            // do auth
-            String aor="";
-            String account="";
-            String domain="";
-            String userKey="";
-            String ipPhonePassword="aaaaaa";
-
-            aor=registerRequest.getFrom().getAddress().getURI().toString().split(":")[1];
-            account=aor.split("@")[0];
-            domain=aor.split("@")[1];
-
-            userKey=aor;// 1단계에서는 OPMD 지원 고려 안하는걸로.
-
-            authorization=authHeader.toString();
-
-
-            // TODO(lunker): get password from rest
-            /*
-            HttpService httpService=HttpService.getInstance();
-
-            try{
-                JsonObject response=httpService.get("/ims/users/"+aor+"/password", JsonObject.class);
-                String status=response.getAsJsonObject("header").get("status").getAsString();
-                if (!status.equals("error")) {
-                    ipPhonePassword = response.get("body").getAsJsonObject().get("telNoPassword").getAsString();
-                }
-            }
-            catch (Exception e){
-                e.printStackTrace();
-                // return
-            }
-            */
-
-            AuthUtil authUtil=new AuthUtil(authorization);
-            authUtil.setPassword(ipPhonePassword);
-
-            if(authUtil.isEqualHA()){
-                // Auth success
-                logger.warn("REGISTER Success");
-                sipResponse=((ProxySipRequest) registerRequest).createResponse(SIPResponse.OK);
-
-                // store to redis
-                // store registration info in cache
-                String remoteAddress="";
-                int remotePort=0;
-
-                remoteAddress=((InetSocketAddress)ctx.channel().remoteAddress()).getHostString();
-                remotePort=((InetSocketAddress)ctx.channel().remoteAddress()).getPort();
-                Registration registration=new Registration(userKey, aor,account, domain, remoteAddress, remotePort);
-
-                registrar.register(userKey, registration);
-
-//                registrar.register(userKey, registration, ctx);
-//                jedisConnection.set(userKey, gson.toJson(registration));
-            }
-            else{
-                logger.warn("REGISTER Fail");
-            }
-        }
-
-        // fire response
-//        this.currentCtx.fireChannelRead(sipResponse);
-        return sipResponse;
     }
 
     @Override
@@ -381,7 +286,102 @@ public class ProxyInHandler implements AbstractSIPHandler {
 
     @Override
     public DefaultSipMessage handleRegister(DefaultSipMessage registerRequest) {
-        return null;
+        registerRequest=(ProxySipRequest) registerRequest;
+        Header authHeader= registerRequest.getHeader("Authorization");
+        String authorization="";
+        ProxySipResponse sipResponse=null;
+
+        if(authHeader==null){
+            // non-auth
+            sipResponse=((ProxySipRequest) registerRequest).createResponse(SIPResponse.UNAUTHORIZED);
+            String domain=registerRequest.getFrom().getAddress().getURI().toString().split("@")[1];
+
+            try{
+                WWWAuthenticateHeader wwwAuthenticateHeader=this.headerFactory.createWWWAuthenticateHeader("Digest");
+                wwwAuthenticateHeader.setAlgorithm("MD5");
+                wwwAuthenticateHeader.setQop("auth");
+                wwwAuthenticateHeader.setNonce(AuthUtil.getNonce());
+                wwwAuthenticateHeader.setRealm(domain);
+
+                sipResponse.addHeader(wwwAuthenticateHeader);
+            }
+            catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        else{
+            // do auth
+            String aor="";
+            String account="";
+            String domain="";
+            String userKey="";
+            String ipPhonePassword="aaaaaa";
+
+            aor=registerRequest.getFrom().getAddress().getURI().toString().split(":")[1];
+            account=aor.split("@")[0];
+            domain=aor.split("@")[1];
+
+            userKey=aor;// 1단계에서는 OPMD 지원 고려 안하는걸로.
+
+            authorization=authHeader.toString();
+
+
+            // TODO(lunker): get password from rest
+            /*
+            HttpService httpService=HttpService.getInstance();
+
+            try{
+                JsonObject response=httpService.get("/ims/users/"+aor+"/password", JsonObject.class);
+                String status=response.getAsJsonObject("header").get("status").getAsString();
+                if (!status.equals("error")) {
+                    ipPhonePassword = response.get("body").getAsJsonObject().get("telNoPassword").getAsString();
+                }
+            }
+            catch (Exception e){
+                e.printStackTrace();
+                // return
+            }
+            */
+
+            AuthUtil authUtil=new AuthUtil(authorization);
+            authUtil.setPassword(ipPhonePassword);
+
+            if(authUtil.isEqualHA()){
+                // Auth success
+                logger.warn("REGISTER Success");
+                sipResponse=((ProxySipRequest) registerRequest).createResponse(SIPResponse.OK);
+
+                // store to redis
+                // store registration info in cache
+                String remoteAddress="";
+                int remotePort=0;
+
+
+                ViaList vias=registerRequest.getViaHeaders();
+                Header lastVia=vias.getLast();
+
+
+                //TODO: get first via received & rport
+                /*
+                remoteAddress=((InetSocketAddress)ctx.channel().remoteAddress()).getHostString();
+                remotePort=((InetSocketAddress)ctx.channel().remoteAddress()).getPort();
+                */
+
+                Registration registration=new Registration(userKey, aor,account, domain, remoteAddress, remotePort);
+
+                registrar.register(userKey, registration);
+
+//                registrar.register(userKey, registration, ctx);
+//                jedisConnection.set(userKey, gson.toJson(registration));
+            }
+            else{
+                logger.warn("REGISTER Fail");
+            }
+        }
+
+        // fire response
+//        this.currentCtx.fireChannelRead(sipResponse);
+        return sipResponse;
     }
 
 }

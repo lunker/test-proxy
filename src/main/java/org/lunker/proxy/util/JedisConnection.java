@@ -1,4 +1,4 @@
-package proxy.util;
+package org.lunker.proxy.util;
 
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;

@@ -1,4 +1,4 @@
-package proxy.registrar;
+package org.lunker.proxy.registrar;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -38,15 +38,6 @@ public class Registrar {
     public Registration getRegistration(String userKey){
         return registrationMap.get(userKey);
     }
-
-    /*
-    public ChannelHandlerContext getCtx(String userKey){
-        synchronized (this.ctxMap){
-            return ctxMap.get(userKey);
-        }
-    }
-    */
-
 
     private static class SingletonHolder{
         private static Registrar INSTANCE=new Registrar();
