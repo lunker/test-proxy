@@ -3,7 +3,6 @@ package org.lunker.proxy.sip;
 import io.netty.channel.ChannelHandlerContext;
 import org.lunker.new_proxy.sip.wrapper.message.DefaultSipMessage;
 import org.lunker.new_proxy.stub.SipMessageHandler;
-import org.lunker.proxy.Validation;
 import org.lunker.proxy.core.Message;
 import org.lunker.proxy.sip.pre_process.ProxyPreHandler;
 import org.lunker.proxy.sip.pro_process.ProxyPostHandler;
@@ -37,7 +36,8 @@ public class SipServletImpl implements SipMessageHandler {
             logger.info("[RECEIVED]:\n" + maybeDefaultSipMessage.get().toString());
 
         maybeDefaultSipMessage.ifPresent((defaultSipMessage)->{
-            Message message=new Message(defaultSipMessage, new Validation());
+//            Message message=new Message(defaultSipMessage, new Validation());
+            Message message=new Message(defaultSipMessage);
 
             Mono<?> proxyAsync=Mono.just(message)
                     .map(proxyPreHandler::handle)

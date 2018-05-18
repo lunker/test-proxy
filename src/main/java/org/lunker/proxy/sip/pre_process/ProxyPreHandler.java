@@ -1,11 +1,13 @@
 package org.lunker.proxy.sip.pre_process;
 
 import gov.nist.javax.sip.message.SIPRequest;
-import org.lunker.new_proxy.sip.wrapper.message.DefaultSipMessage;
+import gov.nist.javax.sip.message.SIPResponse;
 import org.lunker.new_proxy.sip.wrapper.message.DefaultSipRequest;
+import org.lunker.new_proxy.sip.wrapper.message.DefaultSipResponse;
 import org.lunker.proxy.core.Message;
 import org.lunker.proxy.core.ProcessState;
 import org.lunker.proxy.core.ProxyHandler;
+import org.lunker.proxy.util.ProxyHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,16 +23,19 @@ public class ProxyPreHandler implements ProxyHandler {
     @Override
     public Message handle(Message message) {
         if(message.getProcessState() != ProcessState.PRE) {
-            //TODO: State check
+            //TODO: State check 공통화
             return message;
         }
 
         if(logger.isDebugEnabled())
             logger.debug("In ProxyPreHandler");
 
-        validateRequest(message.getOriginalMessage());
+        validateRequest(message);
 
-        message.setProcessState(ProcessState.IN);
+        if(message.getValidation().isValidate())
+            message.setProcessState(ProcessState.IN);
+        else
+            message.setProcessState(ProcessState.POST);
 
         return message;
     }
@@ -38,71 +43,105 @@ public class ProxyPreHandler implements ProxyHandler {
     /**
      * Validate sip request according to rfc 3261 section 16.3
      */
-    public boolean validateRequest(DefaultSipMessage defaultSipMessage){
-        checkSipUriScheme(defaultSipMessage);
-        checkMaxForwards(defaultSipMessage);
-        checkRequestLoop(defaultSipMessage);
+    public Message validateRequest(Message message){
+        checkSipUriScheme(message)
+                .checkMaxForwards(message)
+                .checkRequestLoop(message);
 
-        return false;
+        return message;
     }
 
-    private boolean checkSipUriScheme(DefaultSipMessage defaultSipMessage){
-        if(defaultSipMessage instanceof DefaultSipRequest)
-            return ((DefaultSipRequest)defaultSipMessage).getRequestURI().isSipURI();
-        return false;
+    private ProxyPreHandler checkSipUriScheme(Message message){
+        if(message.getOriginalMessage() instanceof DefaultSipRequest) {
+            if (!((DefaultSipRequest) message.getOriginalMessage()).getRequestURI().isSipURI()) {
+                try {
+                    // Publish 416 Unsupported_URI_Scheme
+                    DefaultSipResponse unsupportedUriSchemeResponse = ((DefaultSipRequest) message.getOriginalMessage()).createResponse(SIPResponse.UNSUPPORTED_URI_SCHEME);
+
+                    message.invalidate(SIPResponse.UNSUPPORTED_URI_SCHEME, "", unsupportedUriSchemeResponse);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        return this;
     }
 
     /**
      * Check Max-Forwards Header
-     * @param defaultSipMessage
+     * @param message
      * @return
      */
-    private boolean checkMaxForwards(DefaultSipMessage defaultSipMessage){
-        MaxForwardsHeader maxForwardsHeader=defaultSipMessage.getMaxForwards();
-        boolean isValidate=false;
+    private ProxyPreHandler checkMaxForwards(Message message){
+        MaxForwardsHeader maxForwardsHeader=message.getOriginalMessage().getMaxForwards();
 
         if(maxForwardsHeader==null){
-            isValidate=false;
+//            // TODO: Null Check with better approach
+//            // TODO: Invalidate with 500 Server Internal Error
+//            message.getValidation().setValidate(false);
+            return this;
         }
         else{
             int maxForwards=0;
             maxForwards=maxForwardsHeader.getMaxForwards();
 
-            if(maxForwards > 0){
-                isValidate=true;
-            }
-            else if(maxForwards == 0 ){
-                if(SIPRequest.INFO.equals(defaultSipMessage.getMethod())){
-                    isValidate=true;
+            if(maxForwards == 0){
+                if(SIPRequest.INFO.equals(message.getOriginalMessage().getMethod())){
+
+//                    message.getValidation().setValidate(false);
+
+                    // TOOD: 올바른 response발행
                 }
                 else{
-                    isValidate=false;
+                    // ?
                 }
             }
-            else{
+            else if(maxForwards < 0){
                 // TODO: create 483 response
-
+                try{
+                    DefaultSipResponse tooManyHopsResponse=((DefaultSipRequest)message.getOriginalMessage()).createResponse(SIPResponse.TOO_MANY_HOPS);
+                    message.invalidate(SIPResponse.TOO_MANY_HOPS, "", tooManyHopsResponse);
+                }
+                catch (Exception e){
+                    e.printStackTrace();
+                    // TODO: create 500 ServerInternal Error Response common
+                }
             }
         }
 
-        return isValidate;
+        return this;
     }
 
     /**
      * Check whether received sip request is looped
-     * @param defaultSipMessage
+     * @param message
      * @return
      */
-    private boolean checkRequestLoop(DefaultSipMessage defaultSipMessage){
-        String branch=defaultSipMessage.getTopmostVia().getBranch();
-        String targetBranch="";
+    private ProxyPreHandler checkRequestLoop(Message message){
+        String branch=message.getOriginalMessage().getTopmostVia().getBranch();
+        String expectedBranch="";
 
-        return false;
+        // generate branch value
+        expectedBranch= ProxyHelper.generateBranch(message.getOriginalMessage());
+
+        if(branch.equals(expectedBranch)){
+            // Loop detect
+            try{
+                DefaultSipResponse loopDetectedResponse=((DefaultSipRequest)message.getOriginalMessage()).createResponse(SIPResponse.LOOP_DETECTED);
+                message.invalidate(SIPResponse.LOOP_DETECTED, "", loopDetectedResponse);
+            }
+            catch (Exception e){
+                e.printStackTrace();
+            }
+        }
+
+        return this;
     }
 
     // TODO
-    private boolean checkProxyRequire(DefaultSipMessage defaultSipMessage){
-        Header proxyRequireHeader=defaultSipMessage.getHeader("Proxy-Require");
+    private ProxyPreHandler checkProxyRequire(Message message){
+        Header proxyRequireHeader=message.getOriginalMessage().getHeader("Proxy-Require");
 
         if(proxyRequireHeader==null){
 
@@ -111,20 +150,21 @@ public class ProxyPreHandler implements ProxyHandler {
 
         }
 
-        return false;
+        return this;
     }
 
     // TODO
-    private boolean checkProxyAuthorization(DefaultSipMessage defaultSipMessage){
+    private ProxyPreHandler checkProxyAuthorization(Message message){
+        Header proxyAuthorizationHeader=message.getOriginalMessage().getHeader("Proxy-Authorization");
 
-        Header proxyAuthorizationHeader=defaultSipMessage.getHeader("Proxy-Authorization");
+        if(proxyAuthorizationHeader==null){
 
-        if(proxyAuthorizationHeader==null)
-            return false;
+            return this;
+        }
         else{
             // TODO: check auth
         }
 
-        return false;
+        return this;
     }
 }
