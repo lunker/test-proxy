@@ -9,7 +9,9 @@ import org.lunker.proxy.sip.SipServletImpl;
 public class Application {
     public static void main(String[] args){
         try{
-            Bootstrap.start("tcp", SipServletImpl.class);
+            Bootstrap.addHandler("tcp", SipServletImpl.class);
+            Bootstrap.addHandler("udp", SipServletImpl.class);
+            Bootstrap.run();
         }
         catch (Exception e ){
             e.printStackTrace();

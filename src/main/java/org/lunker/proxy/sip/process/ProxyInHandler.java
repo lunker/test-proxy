@@ -1,7 +1,6 @@
 package org.lunker.proxy.sip.process;
 
 import com.google.gson.Gson;
-import gov.nist.javax.sip.header.Via;
 import gov.nist.javax.sip.message.SIPRequest;
 import gov.nist.javax.sip.message.SIPResponse;
 import org.lunker.new_proxy.sip.wrapper.message.DefaultSipMessage;
@@ -26,9 +25,6 @@ import javax.sip.header.Header;
 import javax.sip.header.HeaderFactory;
 import javax.sip.header.WWWAuthenticateHeader;
 import javax.sip.message.MessageFactory;
-import java.net.*;
-import java.util.Enumeration;
-import java.util.List;
 
 /**
  * Created by dongqlee on 2018. 5. 15..
@@ -62,7 +58,6 @@ public class ProxyInHandler implements AbstractSIPHandler, ProxyHandler {
             e.printStackTrace();
         }
 
-        host=getHostAddress();
     }
 
     @Override
@@ -96,25 +91,13 @@ public class ProxyInHandler implements AbstractSIPHandler, ProxyHandler {
         return message;
     }
 
-
-
     /**
      * Remove top Via
      * @param response
      * @return
      */
     public DefaultSipMessage handleResponse(DefaultSipMessage response){
-        ProxySipResponse proxySipResponse=(ProxySipResponse) response;
-        Via via=proxySipResponse.getTopmostVia();
 
-        if(via.getHost().equalsIgnoreCase(host)){
-            System.out.println("breakpoint");
-
-            proxySipResponse.removeTopVia();
-        }
-        else{
-            logger.warn("Invalid routed sip message. {}\ndrop...", response);
-        }
 
         return response;
     }

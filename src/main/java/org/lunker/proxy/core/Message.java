@@ -2,7 +2,7 @@ package org.lunker.proxy.core;
 
 import org.lunker.new_proxy.sip.wrapper.message.DefaultSipMessage;
 import org.lunker.new_proxy.sip.wrapper.message.DefaultSipResponse;
-import org.lunker.proxy.Validation;
+import org.lunker.proxy.sip.pre_process.Validation;
 
 /**
  * Created by dongqlee on 2018. 5. 17..
@@ -19,7 +19,7 @@ public class Message {
     public Message(DefaultSipMessage originalMessage) {
         this.processState = ProcessState.PRE;
         this.originalMessage = originalMessage;
-        this.newMessage = newMessage;
+        this.newMessage = originalMessage;
         this.validation = new Validation();
     }
 

@@ -1,24 +1,56 @@
 package org.lunker.proxy.sip.pre_process;
 
-import gov.nist.javax.sip.message.SIPRequest;
-import gov.nist.javax.sip.message.SIPResponse;
+import gov.nist.javax.sip.header.Via;
+import org.lunker.new_proxy.model.ServerInfo;
 import org.lunker.new_proxy.sip.wrapper.message.DefaultSipRequest;
 import org.lunker.new_proxy.sip.wrapper.message.DefaultSipResponse;
 import org.lunker.proxy.core.Message;
 import org.lunker.proxy.core.ProcessState;
 import org.lunker.proxy.core.ProxyHandler;
-import org.lunker.proxy.util.ProxyHelper;
+import org.lunker.proxy.sip.pre_process.request.RequestTargetDetector;
+import org.lunker.proxy.sip.pre_process.request.RequestValidator;
+import org.lunker.proxy.sip.pre_process.request.RoutePreprocessor;
+import org.lunker.proxy.sip.pre_process.response.ViaRemover;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.sip.header.Header;
-import javax.sip.header.MaxForwardsHeader;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 /**
  * Created by dongqlee on 2018. 5. 1..
  */
 public class ProxyPreHandler implements ProxyHandler {
     private Logger logger= LoggerFactory.getLogger(ProxyPreHandler.class);
+
+    private String host="";
+    private int port=0;
+    private String transport="";
+
+
+    // Request pre-handler
+    private RequestValidator requestValidator=null;
+    private RoutePreprocessor routePreprocessor=null;
+    private RequestTargetDetector requestTargetDetector=null;
+
+    // Response pre-handler
+    private ProxyHandler viaRemover=null;
+
+    public ProxyPreHandler() {
+    }
+
+    public ProxyPreHandler(ServerInfo serverInfo) {
+        this.host=serverInfo.getHost();
+        this.port=serverInfo.getPort();
+        this.transport=serverInfo.getTransport().getValue();
+
+        // pre-handler
+
+        this.requestValidator=new RequestValidator();
+        this.routePreprocessor=new RoutePreprocessor();
+        this.requestTargetDetector=new RequestTargetDetector();
+
+        this.viaRemover=new ViaRemover();
+    }
 
     @Override
     public Message handle(Message message) {
@@ -30,8 +62,24 @@ public class ProxyPreHandler implements ProxyHandler {
         if(logger.isDebugEnabled())
             logger.debug("In ProxyPreHandler");
 
-        validateRequest(message);
+        if(message.getOriginalMessage() instanceof DefaultSipRequest){
+            //Request Preprocessing
+            // TODO: add more filter validation
+            Mono<?> testMono=Mono.just(message)
+                    .map(requestValidator::handle)
+                    .filter(propagatedMessage-> propagatedMessage.getValidation().isValidate())
+                    .map(routePreprocessor::handle)
+                    .map(requestTargetDetector::handle);
 
+            testMono.subscribeOn(Schedulers.single());
+            testMono.subscribe();
+        }
+        else{
+            //Response Preprocessing
+            Mono.just(message).map(viaRemover::handle).subscribeOn(Schedulers.single()).subscribe();
+        }
+
+        // Change proxy message state
         if(message.getValidation().isValidate())
             message.setProcessState(ProcessState.IN);
         else
@@ -40,131 +88,21 @@ public class ProxyPreHandler implements ProxyHandler {
         return message;
     }
 
-    /**
-     * Validate sip request according to rfc 3261 section 16.3
-     */
-    public Message validateRequest(Message message){
-        checkSipUriScheme(message)
-                .checkMaxForwards(message)
-                .checkRequestLoop(message);
+    private Message removeTopVia(Message message){
+        DefaultSipResponse defaultSipResponse=(DefaultSipResponse) message.getOriginalMessage();
+        Via via=defaultSipResponse.getTopmostVia();
+
+        if(via.getHost().equalsIgnoreCase(host)){
+            System.out.println("breakpoint");
+
+            defaultSipResponse.removeTopVia();
+        }
+        else{
+            logger.warn("Invalid routed sip message. {}\ndrop...", defaultSipResponse);
+        }
 
         return message;
     }
 
-    private ProxyPreHandler checkSipUriScheme(Message message){
-        if(message.getOriginalMessage() instanceof DefaultSipRequest) {
-            if (!((DefaultSipRequest) message.getOriginalMessage()).getRequestURI().isSipURI()) {
-                try {
-                    // Publish 416 Unsupported_URI_Scheme
-                    DefaultSipResponse unsupportedUriSchemeResponse = ((DefaultSipRequest) message.getOriginalMessage()).createResponse(SIPResponse.UNSUPPORTED_URI_SCHEME);
 
-                    message.invalidate(SIPResponse.UNSUPPORTED_URI_SCHEME, "", unsupportedUriSchemeResponse);
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-
-        return this;
-    }
-
-    /**
-     * Check Max-Forwards Header
-     * @param message
-     * @return
-     */
-    private ProxyPreHandler checkMaxForwards(Message message){
-        MaxForwardsHeader maxForwardsHeader=message.getOriginalMessage().getMaxForwards();
-
-        if(maxForwardsHeader==null){
-//            // TODO: Null Check with better approach
-//            // TODO: Invalidate with 500 Server Internal Error
-//            message.getValidation().setValidate(false);
-            return this;
-        }
-        else{
-            int maxForwards=0;
-            maxForwards=maxForwardsHeader.getMaxForwards();
-
-            if(maxForwards == 0){
-                if(SIPRequest.INFO.equals(message.getOriginalMessage().getMethod())){
-
-//                    message.getValidation().setValidate(false);
-
-                    // TOOD: 올바른 response발행
-                }
-                else{
-                    // ?
-                }
-            }
-            else if(maxForwards < 0){
-                // TODO: create 483 response
-                try{
-                    DefaultSipResponse tooManyHopsResponse=((DefaultSipRequest)message.getOriginalMessage()).createResponse(SIPResponse.TOO_MANY_HOPS);
-                    message.invalidate(SIPResponse.TOO_MANY_HOPS, "", tooManyHopsResponse);
-                }
-                catch (Exception e){
-                    e.printStackTrace();
-                    // TODO: create 500 ServerInternal Error Response common
-                }
-            }
-        }
-
-        return this;
-    }
-
-    /**
-     * Check whether received sip request is looped
-     * @param message
-     * @return
-     */
-    private ProxyPreHandler checkRequestLoop(Message message){
-        String branch=message.getOriginalMessage().getTopmostVia().getBranch();
-        String expectedBranch="";
-
-        // generate branch value
-        expectedBranch= ProxyHelper.generateBranch(message.getOriginalMessage());
-
-        if(branch.equals(expectedBranch)){
-            // Loop detect
-            try{
-                DefaultSipResponse loopDetectedResponse=((DefaultSipRequest)message.getOriginalMessage()).createResponse(SIPResponse.LOOP_DETECTED);
-                message.invalidate(SIPResponse.LOOP_DETECTED, "", loopDetectedResponse);
-            }
-            catch (Exception e){
-                e.printStackTrace();
-            }
-        }
-
-        return this;
-    }
-
-    // TODO
-    private ProxyPreHandler checkProxyRequire(Message message){
-        Header proxyRequireHeader=message.getOriginalMessage().getHeader("Proxy-Require");
-
-        if(proxyRequireHeader==null){
-
-        }
-        else{
-
-        }
-
-        return this;
-    }
-
-    // TODO
-    private ProxyPreHandler checkProxyAuthorization(Message message){
-        Header proxyAuthorizationHeader=message.getOriginalMessage().getHeader("Proxy-Authorization");
-
-        if(proxyAuthorizationHeader==null){
-
-            return this;
-        }
-        else{
-            // TODO: check auth
-        }
-
-        return this;
-    }
 }

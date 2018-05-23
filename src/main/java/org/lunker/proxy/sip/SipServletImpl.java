@@ -1,6 +1,6 @@
 package org.lunker.proxy.sip;
 
-import io.netty.channel.ChannelHandlerContext;
+import org.lunker.new_proxy.model.ServerInfo;
 import org.lunker.new_proxy.sip.wrapper.message.DefaultSipMessage;
 import org.lunker.new_proxy.stub.SipMessageHandler;
 import org.lunker.proxy.core.Message;
@@ -17,26 +17,27 @@ import java.util.Optional;
 /**
  * Created by dongqlee on 2018. 4. 25..
  */
-public class SipServletImpl implements SipMessageHandler {
+public class SipServletImpl extends SipMessageHandler {
     private Logger logger= LoggerFactory.getLogger(SipServletImpl.class);
 
     private ProxyPreHandler proxyPreHandler=null;
     private ProxyInHandler proxyInHandler=null;
     private ProxyPostHandler proxyProHandler=null;
 
-    public SipServletImpl() {
-        proxyPreHandler=new ProxyPreHandler();
+    public SipServletImpl(ServerInfo serverInfo) {
+        super(serverInfo);
+
+        proxyPreHandler=new ProxyPreHandler(this.getServerInfo());
         proxyInHandler=new ProxyInHandler();
-        proxyProHandler=new ProxyPostHandler();
+        proxyProHandler=new ProxyPostHandler(this.getServerInfo());
     }
 
     @Override
-    public void handle(ChannelHandlerContext ctx, Optional<DefaultSipMessage> maybeDefaultSipMessage) {
+    public void handle(Optional<DefaultSipMessage> maybeDefaultSipMessage) {
         if(logger.isInfoEnabled())
             logger.info("[RECEIVED]:\n" + maybeDefaultSipMessage.get().toString());
 
         maybeDefaultSipMessage.ifPresent((defaultSipMessage)->{
-//            Message message=new Message(defaultSipMessage, new Validation());
             Message message=new Message(defaultSipMessage);
 
             Mono<?> proxyAsync=Mono.just(message)
