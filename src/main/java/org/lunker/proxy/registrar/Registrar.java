@@ -14,12 +14,10 @@ public class Registrar {
     // key: aor
     // value: Registration info
     private Map<String, Registration> registrationMap;
-
 //    private Map<String, ChannelHandlerContext> ctxMap;
 
     private Registrar() {
         registrationMap=new ConcurrentHashMap<>(REGISTRAR_CAPACITY);
-//        ctxMap=new HashMap<>(REGISTRAR_CAPACITY);
     }
 
     public static Registrar getInstance(){

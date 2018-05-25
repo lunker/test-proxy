@@ -28,7 +28,7 @@ public class SipServletImpl extends SipMessageHandler {
         super(serverInfo);
 
         proxyPreHandler=new ProxyPreHandler(this.getServerInfo());
-        proxyInHandler=new ProxyInHandler();
+        proxyInHandler=new ProxyInHandler(this.getServerInfo());
         proxyProHandler=new ProxyPostHandler(this.getServerInfo());
     }
 

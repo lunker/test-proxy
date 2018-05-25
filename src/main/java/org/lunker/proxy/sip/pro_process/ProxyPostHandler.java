@@ -26,7 +26,6 @@ public class ProxyPostHandler implements ProxyHandler {
         this.transport=serverInfo.getTransport().getValue();
 
         generateProxyVia();
-
     }
 
     public void setup(ServerInfo serverInfo){

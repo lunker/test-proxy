@@ -15,7 +15,7 @@ public class RequestTargetDetector implements ProxyHandler {
     // TODO:
     @Override
     public Message handle(Message message) {
-
+        logger.info("In RequestTargetDetector");
         return message;
     }
 }

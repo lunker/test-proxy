@@ -1,8 +1,8 @@
 package org.lunker.proxy.sip.process;
 
 import com.google.gson.Gson;
-import gov.nist.javax.sip.message.SIPRequest;
 import gov.nist.javax.sip.message.SIPResponse;
+import org.lunker.new_proxy.model.ServerInfo;
 import org.lunker.new_proxy.sip.wrapper.message.DefaultSipMessage;
 import org.lunker.new_proxy.sip.wrapper.message.proxy.ProxySipRequest;
 import org.lunker.new_proxy.sip.wrapper.message.proxy.ProxySipResponse;
@@ -13,11 +13,17 @@ import org.lunker.proxy.core.ProxyHandler;
 import org.lunker.proxy.model.RemoteAddress;
 import org.lunker.proxy.registrar.Registrar;
 import org.lunker.proxy.registrar.Registration;
+import org.lunker.proxy.sip.process.request.ProxyRequestHandler;
+import org.lunker.proxy.sip.process.response.ProxyResponseHandler;
+import org.lunker.proxy.sip.process.stateless.ProxyStatelessRequestHandler;
+import org.lunker.proxy.sip.process.stateless.ProxyStatelessResponseHandler;
 import org.lunker.proxy.util.AuthUtil;
 import org.lunker.proxy.util.JedisConnection;
 import org.lunker.proxy.util.ProxyHelper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import javax.sip.address.AddressFactory;
 import javax.sip.address.URI;
@@ -40,10 +46,12 @@ public class ProxyInHandler implements AbstractSIPHandler, ProxyHandler {
     private JedisConnection jedisConnection=null;
     private Gson gson=null;
 
-    private String host="";
-    private int port=10010;
+    private ProxyRequestHandler proxyRequestHandler=null;
+    private ProxyResponseHandler proxyResponseHandler=null;
+    private ProxyStatelessRequestHandler proxyStatelessRequestHandler=null;
+    private ProxyStatelessResponseHandler proxyStatelessResponseHandler=null;
 
-    public ProxyInHandler() {
+    public ProxyInHandler(ServerInfo serverInfo) {
         jedisConnection=JedisConnection.getInstance();
         gson=new Gson();
 
@@ -58,6 +66,11 @@ public class ProxyInHandler implements AbstractSIPHandler, ProxyHandler {
             e.printStackTrace();
         }
 
+        proxyRequestHandler=new ProxyRequestHandler();
+        proxyResponseHandler=new ProxyResponseHandler();
+
+        proxyStatelessRequestHandler=new ProxyStatelessRequestHandler(serverInfo);
+        proxyStatelessResponseHandler=new ProxyStatelessResponseHandler();
     }
 
     @Override
@@ -65,28 +78,26 @@ public class ProxyInHandler implements AbstractSIPHandler, ProxyHandler {
         if(message.getProcessState() != ProcessState.IN)
             return message;
 
-        DefaultSipMessage originalMessage=message.getOriginalMessage();
-        DefaultSipMessage newMessage=null;
+        DefaultSipMessage originalMessage=null;
+        Mono<Message> messageProcessMono=null;
 
-        // message
+        originalMessage=message.getOriginalMessage();
+
         if(originalMessage instanceof ProxySipRequest){
-            String method=originalMessage.getMethod();
-
-            if(method.equals(SIPRequest.REGISTER))
-                newMessage=this.handleRegister(originalMessage);
-            else if (method.equals(SIPRequest.INVITE))
-                newMessage=this.handleInvite(originalMessage);
-            else if(method.equals(SIPRequest.ACK))
-                newMessage=this.handleAck(originalMessage);
-            else if(method.equals(SIPRequest.BYE))
-                newMessage=this.handleBye(originalMessage);
+            messageProcessMono=Mono.just(message)
+                    .map(proxyStatelessRequestHandler::handle);
         }
         else if(originalMessage instanceof ProxySipResponse){
-            newMessage=handleResponse(originalMessage);
+            messageProcessMono=Mono.just(message)
+                    .map(proxyStatelessResponseHandler::handle);
         }
 
-        message.setNewMessage(newMessage);
-        message.setProcessState(ProcessState.POST);
+        messageProcessMono.subscribeOn(Schedulers.single());
+        messageProcessMono.block();
+
+        if(message.getValidation().isValidate()){
+            message.setProcessState(ProcessState.POST);
+        }
 
         return message;
     }
@@ -97,8 +108,6 @@ public class ProxyInHandler implements AbstractSIPHandler, ProxyHandler {
      * @return
      */
     public DefaultSipMessage handleResponse(DefaultSipMessage response){
-
-
         return response;
     }
 
@@ -239,7 +248,6 @@ public class ProxyInHandler implements AbstractSIPHandler, ProxyHandler {
 
             if(authUtil.isEqualHA()){
                 // Auth success
-                logger.warn("REGISTER Success");
                 sipResponse=((ProxySipRequest) registerRequest).createResponse(SIPResponse.OK);
 
                 //TODO: get first via received & rport

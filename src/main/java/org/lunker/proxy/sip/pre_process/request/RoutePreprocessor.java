@@ -16,6 +16,7 @@ public class RoutePreprocessor implements ProxyHandler{
 
     @Override
     public Message handle(Message message) {
+        logger.info("In RoutePreprocessor");
 
         return message;
     }

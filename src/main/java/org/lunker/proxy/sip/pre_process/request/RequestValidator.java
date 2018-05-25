@@ -24,6 +24,8 @@ public class RequestValidator implements ProxyHandler{
      */
     @Override
     public Message handle(Message message) {
+//        message.invalidate(SIPResponse.OK, "", null);
+
         checkSipUriScheme(message)
                 .checkMaxForwards(message)
                 .checkRequestLoop(message);
