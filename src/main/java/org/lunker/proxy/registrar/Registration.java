@@ -1,17 +1,17 @@
 package org.lunker.proxy.registrar;
 
+import org.lunker.proxy.model.RemoteAddress;
+
 /**
  * Created by dongqlee on 2018. 3. 16..
  */
 public class Registration {
-
     private String userKey;
     private String aor;
     private String account;
     private String domain;
 
-    private String remoteAddress;
-    private int remotePort;
+    private RemoteAddress remoteAddress;
 
     private Registration() {
     }
@@ -23,13 +23,13 @@ public class Registration {
         this.domain = domain;
     }
 
-    public Registration(String userKey, String aor, String account, String domain, String remoteAddress, int remotePort) {
+
+    public Registration(String userKey, String aor, String account, String domain, RemoteAddress remoteAddress) {
         this.userKey = userKey;
         this.aor = aor;
         this.account = account;
         this.domain = domain;
         this.remoteAddress = remoteAddress;
-        this.remotePort = remotePort;
     }
 
     public String getUserKey() {
@@ -64,19 +64,12 @@ public class Registration {
         this.domain = domain;
     }
 
-    public String getRemoteAddress() {
+
+    public RemoteAddress getRemoteAddress() {
         return remoteAddress;
     }
 
-    public void setRemoteAddress(String remoteAddress) {
+    public void setRemoteAddress(RemoteAddress remoteAddress) {
         this.remoteAddress = remoteAddress;
-    }
-
-    public int getRemotePort() {
-        return remotePort;
-    }
-
-    public void setRemotePort(int remotePort) {
-        this.remotePort = remotePort;
     }
 }

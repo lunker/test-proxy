@@ -13,7 +13,9 @@ public class Registrar {
     private int REGISTRAR_CAPACITY=50000;
     // key: aor
     // value: Registration info
-    private Map<String, Registration> registrationMap;
+    private Map<String, Registration> registrationMap=null;
+//    private Map<>
+
 //    private Map<String, ChannelHandlerContext> ctxMap;
 
     private Registrar() {

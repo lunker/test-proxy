@@ -57,7 +57,14 @@ public class ProxyPostHandler implements ProxyHandler {
                 ((DefaultSipRequest)message.getNewMessage()).addVia(proxyVia);
             }
 
-            message.getNewMessage().send();
+            if(message.getValidation().isValidate()){
+                message.getNewMessage().send();
+            }
+            else{
+                // generate SipResponse using validation reason
+            }
+
+
 
             if(logger.isInfoEnabled())
                 logger.info("[SENT]\n{}", message.getNewMessage());
