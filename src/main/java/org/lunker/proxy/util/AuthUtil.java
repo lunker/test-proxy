@@ -99,7 +99,14 @@ public class AuthUtil {
                 {
                     if(key.indexOf(k.toString()) != -1)
                     {
-                        itemMaps.put(k, value);
+                        // lunker: Trim value for containg CRLF in NC (Webphone)
+                        if(k.equals(KEY.NC)){
+                            itemMaps.put(k, value.trim());
+                        }
+                        else{
+                            itemMaps.put(k, value);
+                        }
+
                         break;
                     }
                 }
