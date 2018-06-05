@@ -59,8 +59,6 @@ public class ProxyPostHandler implements ProxyHandler {
                 logger.error("Invalid message\n{}", message.getNewMessage());
             }
 
-
-
             if(logger.isInfoEnabled())
                 logger.info("[SENT]\n{}", message.getNewMessage());
         }

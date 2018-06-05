@@ -2,7 +2,7 @@ package org.lunker.proxy.core;
 
 import org.lunker.new_proxy.sip.wrapper.message.DefaultSipMessage;
 import org.lunker.new_proxy.sip.wrapper.message.DefaultSipResponse;
-import org.lunker.proxy.sip.pre_process.Validation;
+import org.lunker.proxy.sip.pre_process.validation.Validation;
 
 /**
  * Created by dongqlee on 2018. 5. 17..

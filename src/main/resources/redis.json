@@ -1,0 +1,13 @@
+{
+  "redis": {
+    "host": "",
+    "port": "",
+  },
+
+  "sentinel": [
+    {
+      "host": "",
+      "port": ""
+    }
+  ]
+}

@@ -306,6 +306,8 @@ public class ProxyStatelessRequestHandler implements ProxyHandler {
 
     }
 
+    ///////////////////////////////////////////////
+
     public Message handleRegister(Message message) {
         ProxySipRequest registerRequest=(ProxySipRequest) message.getOriginalMessage();
         Header authHeader= registerRequest.getHeader("Authorization");
