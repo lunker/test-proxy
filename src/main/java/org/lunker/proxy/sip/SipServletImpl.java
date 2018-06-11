@@ -1,5 +1,6 @@
 package org.lunker.proxy.sip;
 
+import io.netty.channel.ChannelHandler;
 import org.lunker.new_proxy.model.ServerInfo;
 import org.lunker.new_proxy.sip.wrapper.message.DefaultSipMessage;
 import org.lunker.new_proxy.stub.SipMessageHandler;
@@ -17,6 +18,7 @@ import java.util.Optional;
 /**
  * Created by dongqlee on 2018. 4. 25..
  */
+@ChannelHandler.Sharable
 public class SipServletImpl extends SipMessageHandler {
     private Logger logger= LoggerFactory.getLogger(SipServletImpl.class);
 
