@@ -261,13 +261,13 @@ public class ProxyStatelessRequestHandler implements ProxyHandler {
             targetRequestURI.setTransportParam(targetRegistration.getRemoteAddress().getTransport().getValue());
             */
 
-            targetRequestURI.setHost(clientNode.getHost());
+            targetRequestURI.setHost(clientNode.getReceived());
             targetRequestURI.setPort(clientNode.getRPort()); //TODO: port or rport?
             targetRequestURI.setTransportParam(clientNode.getTransport());
 
             proxySipRequest.setRequestURI(targetRequestURI);
 
-            message.setTargetRemoteAddress(new RemoteAddress(Transport.valueOf(adjacentNode.getTransport()), adjacentNode.getHost(), adjacentNode.getRPort()));
+            message.setTargetRemoteAddress(new RemoteAddress(Transport.valueOf(adjacentNode.getTransport()), adjacentNode.getReceived(), adjacentNode.getRPort()));
         }
         catch (Exception e){
             e.printStackTrace();

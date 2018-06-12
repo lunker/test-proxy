@@ -2,6 +2,7 @@ package org.lunker.proxy.sip.pro_process;
 
 import gov.nist.javax.sip.header.Via;
 import org.lunker.new_proxy.model.ServerInfo;
+import org.lunker.new_proxy.sip.wrapper.message.proxy.ProxySipRequest;
 import org.lunker.proxy.core.Message;
 import org.lunker.proxy.core.ProcessState;
 import org.lunker.proxy.core.ProxyHandler;
@@ -57,8 +58,14 @@ public class ProxyPostHandler implements ProxyHandler {
                     message.getNewMessage().send();
                 }
                 else{
-                    RemoteAddress remoteAddress=message.getTargetRemoteAddress();
-                    message.getNewMessage().send(remoteAddress.getHost(), remoteAddress.getPort(), remoteAddress.getTransport().getValue());
+                    if(message.getNewMessage() instanceof ProxySipRequest){
+                        // Forward request to registrar info
+                        RemoteAddress remoteAddress=message.getTargetRemoteAddress();
+                        message.getNewMessage().send(remoteAddress.getHost(), remoteAddress.getPort(), remoteAddress.getTransport().getValue());
+                    }
+                    else{
+                        message.getNewMessage().send();
+                    }
                 }
             }
             else{
