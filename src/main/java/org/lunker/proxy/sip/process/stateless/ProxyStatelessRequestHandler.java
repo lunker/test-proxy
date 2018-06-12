@@ -8,6 +8,7 @@ import gov.nist.javax.sip.header.RouteList;
 import gov.nist.javax.sip.header.Via;
 import gov.nist.javax.sip.message.SIPResponse;
 import org.lunker.new_proxy.model.ServerInfo;
+import org.lunker.new_proxy.model.Transport;
 import org.lunker.new_proxy.sip.wrapper.message.DefaultSipRequest;
 import org.lunker.new_proxy.sip.wrapper.message.proxy.ProxySipRequest;
 import org.lunker.new_proxy.sip.wrapper.message.proxy.ProxySipResponse;
@@ -250,6 +251,7 @@ public class ProxyStatelessRequestHandler implements ProxyHandler {
         try{
             Via[] viaList=targetRegistration.getViaList();
             Via adjacentNode=viaList[0];
+            Via clientNode=viaList[viaList.length-1];
 
             /*
             targetRequestURI.setHost(targetRegistration.getRemoteAddress().getHost());
@@ -257,11 +259,13 @@ public class ProxyStatelessRequestHandler implements ProxyHandler {
             targetRequestURI.setTransportParam(targetRegistration.getRemoteAddress().getTransport().getValue());
             */
 
-            targetRequestURI.setHost(adjacentNode.getHost());
-            targetRequestURI.setPort(adjacentNode.getRPort()); //TODO: port or rport?
-            targetRequestURI.setTransportParam(adjacentNode.getTransport());
+            targetRequestURI.setHost(clientNode.getHost());
+            targetRequestURI.setPort(clientNode.getRPort()); //TODO: port or rport?
+            targetRequestURI.setTransportParam(clientNode.getTransport());
 
             proxySipRequest.setRequestURI(targetRequestURI);
+
+            message.setTargetRemoteAddress(new RemoteAddress(Transport.valueOf(adjacentNode.getTransport()), adjacentNode.getHost(), adjacentNode.getRPort()));
         }
         catch (Exception e){
             e.printStackTrace();

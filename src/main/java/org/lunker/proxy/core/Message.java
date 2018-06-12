@@ -2,6 +2,7 @@ package org.lunker.proxy.core;
 
 import org.lunker.new_proxy.sip.wrapper.message.DefaultSipMessage;
 import org.lunker.new_proxy.sip.wrapper.message.DefaultSipResponse;
+import org.lunker.proxy.model.RemoteAddress;
 import org.lunker.proxy.sip.pre_process.validation.Validation;
 
 /**
@@ -11,6 +12,7 @@ public class Message {
     private ProcessState processState;
     private DefaultSipMessage originalMessage;
     private DefaultSipMessage newMessage;
+    private RemoteAddress targetRemoteAddress;
     private Validation validation;
 
     public Message() {
@@ -72,4 +74,14 @@ public class Message {
         this.validation.setReason(reason);
         this.setNewMessage(errorResponse);
     }
+
+
+    public RemoteAddress getTargetRemoteAddress() {
+        return targetRemoteAddress;
+    }
+
+    public void setTargetRemoteAddress(RemoteAddress targetRemoteAddress) {
+        this.targetRemoteAddress = targetRemoteAddress;
+    }
 }
+

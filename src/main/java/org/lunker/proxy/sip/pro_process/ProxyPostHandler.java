@@ -5,6 +5,7 @@ import org.lunker.new_proxy.model.ServerInfo;
 import org.lunker.proxy.core.Message;
 import org.lunker.proxy.core.ProcessState;
 import org.lunker.proxy.core.ProxyHandler;
+import org.lunker.proxy.model.RemoteAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,7 +53,9 @@ public class ProxyPostHandler implements ProxyHandler {
 
         try{
             if(message.getValidation().isValidate()){
-                message.getNewMessage().send();
+//                message.getNewMessage().send();
+                RemoteAddress remoteAddress=message.getTargetRemoteAddress();
+                message.getNewMessage().send(remoteAddress.getHost(), remoteAddress.getPort(), remoteAddress.getTransport().getValue());
             }
             else{
                 // generate SipResponse using validation reason
