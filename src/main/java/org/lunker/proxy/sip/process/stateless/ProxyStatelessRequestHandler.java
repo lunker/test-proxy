@@ -286,7 +286,7 @@ public class ProxyStatelessRequestHandler implements ProxyHandler {
 
         try{
             newProxyVia.setBranch(ProxyHelper.generateBranch(message.getNewMessage()));
-            ((ProxySipRequest)message.getNewMessage()).addVia(this.proxyVia);
+            ((ProxySipRequest)message.getNewMessage()).addVia(newProxyVia);
         }
         catch (Exception e){
             e.printStackTrace();

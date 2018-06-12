@@ -107,15 +107,20 @@ public class RequestValidator implements ProxyHandler{
         // generate branch value
         expectedBranch= ProxyHelper.generateBranch(message.getOriginalMessage());
 
-        if(branch.equals(expectedBranch)){
-            // Loop detect
-            try{
+        try{
+            if(branch!=null && branch.equals(expectedBranch)){
+                // Loop detect
                 DefaultSipResponse loopDetectedResponse=((DefaultSipRequest)message.getOriginalMessage()).createResponse(SIPResponse.LOOP_DETECTED);
                 message.invalidate(SIPResponse.LOOP_DETECTED, "", loopDetectedResponse);
+
             }
-            catch (Exception e){
-                e.printStackTrace();
+            else{
+                DefaultSipResponse defaultSipResponse=((DefaultSipRequest)message.getOriginalMessage()).createResponse(SIPResponse.BAD_REQUEST);
+                message.invalidate(SIPResponse.BAD_REQUEST, "Not valid branch", defaultSipResponse);
             }
+        }
+        catch (Exception e){
+            e.printStackTrace();
         }
 
         return this;
