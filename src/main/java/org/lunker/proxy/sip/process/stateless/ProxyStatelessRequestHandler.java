@@ -29,6 +29,9 @@ import javax.sip.header.Header;
 import javax.sip.header.HeaderFactory;
 import javax.sip.header.WWWAuthenticateHeader;
 import javax.sip.message.Request;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Created by dongqlee on 2018. 5. 24..
@@ -249,9 +252,9 @@ public class ProxyStatelessRequestHandler implements ProxyHandler {
         SipUri targetRequestURI=new SipUri();
 
         try{
-            Via[] viaList=targetRegistration.getViaList();
-            Via adjacentNode=viaList[0];
-            Via clientNode=viaList[viaList.length-1];
+            List<Via> viaList=targetRegistration.getViaList();
+            Via adjacentNode=viaList.get(0);
+            Via clientNode=viaList.get(viaList.size()-1);
 
             /*
             targetRequestURI.setHost(targetRegistration.getRemoteAddress().getHost());
@@ -388,9 +391,8 @@ public class ProxyStatelessRequestHandler implements ProxyHandler {
                 //TODO: get first via received & rport
                 RemoteAddress clientRemoteAddress=ProxyHelper.getClientRemoteAddress(registerRequest);
 
-                Via[] viaList=null;
-                viaList=(Via[]) registerRequest.getViaHeaders().toArray();
-
+                List<Via> viaList=new ArrayList<>();
+                Arrays.asList(registerRequest.getViaHeaders().toArray());
 
 //                Registration registration=new Registration(userKey, aor,account, domain, clientRemoteAddress);
                 Registration registration=new Registration(userKey, aor,account, domain, viaList);

@@ -3,6 +3,8 @@ package org.lunker.proxy.registrar;
 import gov.nist.javax.sip.header.Via;
 import org.lunker.proxy.model.RemoteAddress;
 
+import java.util.List;
+
 /**
  * Created by dongqlee on 2018. 3. 16..
  */
@@ -13,7 +15,7 @@ public class Registration {
     private String domain;
 
     private RemoteAddress remoteAddress;
-    private Via[] viaList;
+    private List<Via> viaList;
 
     private Registration() {
     }
@@ -25,7 +27,8 @@ public class Registration {
         this.domain = domain;
     }
 
-    public Registration(String userKey, String aor, String account, String domain, Via[] viaList) {
+
+    public Registration(String userKey, String aor, String account, String domain, List<Via> viaList) {
         this.userKey = userKey;
         this.aor = aor;
         this.account = account;
@@ -74,12 +77,11 @@ public class Registration {
         this.remoteAddress = remoteAddress;
     }
 
-
-    public Via[] getViaList() {
+    public List<Via> getViaList() {
         return viaList;
     }
 
-    public void setViaList(Via[] viaList) {
+    public void setViaList(List<Via> viaList) {
         this.viaList = viaList;
     }
 }
