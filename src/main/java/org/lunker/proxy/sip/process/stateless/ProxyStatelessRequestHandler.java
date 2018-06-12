@@ -30,7 +30,6 @@ import javax.sip.header.HeaderFactory;
 import javax.sip.header.WWWAuthenticateHeader;
 import javax.sip.message.Request;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -392,7 +391,7 @@ public class ProxyStatelessRequestHandler implements ProxyHandler {
                 RemoteAddress clientRemoteAddress=ProxyHelper.getClientRemoteAddress(registerRequest);
 
                 List<Via> viaList=new ArrayList<>();
-                Arrays.asList(registerRequest.getViaHeaders().toArray());
+                viaList=registerRequest.getViaHeaders().getHeaderList();
 
 //                Registration registration=new Registration(userKey, aor,account, domain, clientRemoteAddress);
                 Registration registration=new Registration(userKey, aor,account, domain, viaList);
