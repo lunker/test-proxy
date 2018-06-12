@@ -248,9 +248,18 @@ public class ProxyStatelessRequestHandler implements ProxyHandler {
         SipUri targetRequestURI=new SipUri();
 
         try{
+            Via[] viaList=targetRegistration.getViaList();
+            Via adjacentNode=viaList[0];
+
+            /*
             targetRequestURI.setHost(targetRegistration.getRemoteAddress().getHost());
             targetRequestURI.setPort(targetRegistration.getRemoteAddress().getPort());
             targetRequestURI.setTransportParam(targetRegistration.getRemoteAddress().getTransport().getValue());
+            */
+
+            targetRequestURI.setHost(adjacentNode.getHost());
+            targetRequestURI.setPort(adjacentNode.getRPort()); //TODO: port or rport?
+            targetRequestURI.setTransportParam(adjacentNode.getTransport());
 
             proxySipRequest.setRequestURI(targetRequestURI);
         }
@@ -375,7 +384,12 @@ public class ProxyStatelessRequestHandler implements ProxyHandler {
                 //TODO: get first via received & rport
                 RemoteAddress clientRemoteAddress=ProxyHelper.getClientRemoteAddress(registerRequest);
 
-                Registration registration=new Registration(userKey, aor,account, domain, clientRemoteAddress);
+                Via[] viaList=null;
+                viaList=(Via[]) registerRequest.getViaHeaders().toArray();
+
+
+//                Registration registration=new Registration(userKey, aor,account, domain, clientRemoteAddress);
+                Registration registration=new Registration(userKey, aor,account, domain, viaList);
 
                 registrar.register(userKey, registration);
 //                jedisConnection.set(userKey, gson.toJson(registration));
