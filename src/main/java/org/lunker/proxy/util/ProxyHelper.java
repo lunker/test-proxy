@@ -75,9 +75,9 @@ public class ProxyHelper {
     }
 
     public static RemoteAddress getClientRemoteAddress(DefaultSipMessage defaultSipMessage){
-        Via firstVia=(Via) defaultSipMessage.getViaHeaders().getFirst();
+        Via lastVia=(Via) defaultSipMessage.getViaHeaders().getLast();
 
-        return new RemoteAddress(Transport.valueOf(firstVia.getTransport().toUpperCase()), firstVia.getReceived(), firstVia.getRPort());
+        return new RemoteAddress(Transport.valueOf(lastVia.getTransport().toUpperCase()), lastVia.getReceived(), lastVia.getRPort());
     }
 
     public static String extractFromUserKey(DefaultSipRequest defaultSipRequest){
