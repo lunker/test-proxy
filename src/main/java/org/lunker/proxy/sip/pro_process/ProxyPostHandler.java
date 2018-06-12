@@ -53,9 +53,13 @@ public class ProxyPostHandler implements ProxyHandler {
 
         try{
             if(message.getValidation().isValidate()){
-//                message.getNewMessage().send();
-                RemoteAddress remoteAddress=message.getTargetRemoteAddress();
-                message.getNewMessage().send(remoteAddress.getHost(), remoteAddress.getPort(), remoteAddress.getTransport().getValue());
+                if(message.getNewMessage().getMethod().equals("REGISTER")){
+                    message.getNewMessage().send();
+                }
+                else{
+                    RemoteAddress remoteAddress=message.getTargetRemoteAddress();
+                    message.getNewMessage().send(remoteAddress.getHost(), remoteAddress.getPort(), remoteAddress.getTransport().getValue());
+                }
             }
             else{
                 // generate SipResponse using validation reason
