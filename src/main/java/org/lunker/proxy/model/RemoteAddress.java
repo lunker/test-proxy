@@ -38,10 +38,6 @@ public class RemoteAddress {
 
     @Override
     public String toString() {
-        return "RemoteAddress{" +
-                "transport=" + transport +
-                ", host='" + host + '\'' +
-                ", port=" + port +
-                '}';
+        return String.format("%s:%s(%s)", this.host, this.port, this.transport);
     }
 }

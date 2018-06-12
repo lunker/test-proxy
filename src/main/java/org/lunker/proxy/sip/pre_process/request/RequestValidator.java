@@ -107,6 +107,7 @@ public class RequestValidator implements ProxyHandler{
         // generate branch value
         expectedBranch= ProxyHelper.generateBranch(message.getOriginalMessage());
 
+        /*
         try{
             if(branch!=null && branch.equals(expectedBranch)){
                 // Loop detect
@@ -122,6 +123,8 @@ public class RequestValidator implements ProxyHandler{
         catch (Exception e){
             e.printStackTrace();
         }
+        */
+
 
         return this;
     }
